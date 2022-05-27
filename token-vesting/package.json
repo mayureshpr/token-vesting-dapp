@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@openzeppelin/contracts": "^4.6.0",
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^12.8.3",
@@ -15,7 +16,14 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "dev": "next dev",
+    "compile": "npx hardhat compile",
+    "clean": "npx hardhat clean",
+    "deploy:local": "cross-env EXECUTE_PROGRAMMATICALLY=true npx hardhat run scripts/deploy.ts --network hardhat",
+    "deploy:localhost": "cross-env EXECUTE_PROGRAMMATICALLY=true npx hardhat run scripts/deploy.ts --network localhost",
+    "test:report-gas": "cross-env REPORT_GAS=true npx hardhat test",
+    "test:watch": "echo You need to install 'entr' to run this command && find contracts test lib -iname '*.sol' -o -iname '*.spec.*' -o -iname '*.test.*' -o -iname '*.ts' | entr -cnr npm run test"
   },
   "eslintConfig": {
     "extends": [
