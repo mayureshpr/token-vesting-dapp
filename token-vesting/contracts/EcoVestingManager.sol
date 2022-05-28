@@ -47,7 +47,7 @@ contract EcoVestingManager is Ownable {
         //    "Company already has vesting contract"
         //);
 	    // Create Company contract by passing msg.sender, name and tokenSymbol to constructor
-        Company company = new Company(msg.sender, name, tokenSymbol, tokenContract);
+        Company company = new Company(name, tokenSymbol, tokenContract);
         // store in companies mapping
         //CompanyAdminData memory companyAdminData;
         //companyAdminData.companyContract = company;

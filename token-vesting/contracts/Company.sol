@@ -5,55 +5,50 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./Employee.sol";
 import "./VestingHelper.sol";
+import "hardhat/console.sol";
 
 /**
   *@title Company contract 
   */
-contract Company is VestingHelper {
+contract Company {
     using SafeERC20 for IERC20;
     /**
      *@dev State variable to store on-chain
      */
-    address private _owner;
+    address public owner;
     //address[] admins;
-    IERC20 private _token;
-    string private _name;
-    string private _symbol;
+    IERC20 public token;
+    string public name;
+    string public symbol;
     
+    // Array of employee wallet address
     address[] public employees;
-    mapping (address => EmployeeVesting) public employeeVesting;
+    // Mapping of employee wallet address to employee contract address
+    mapping (address => address) public employeeVesting;
 
     /**
      * Initialize the company contract with name, symbol, company wallet address as owner
      * and company token contract address
      */
-    constructor(address companyOwner, string memory companyName, 
-        string memory companySymbol, address token) VestingHelper() {
-        _owner = companyOwner;
-        _name = companyName;
-        _symbol = companySymbol;
-        _token = IERC20(token);
+    constructor(string memory companyName, 
+        string memory companySymbol, address companyToken) {
+        owner = msg.sender;
+        name = companyName;
+        symbol = companySymbol;
+        token = IERC20(companyToken);
     }
 
     /**
      * Modifier to be used for functions restricted to owner of this 
      * contract
      */
-    modifier restrictedToCompany() {
-        require(msg.sender == _owner, "Only company owner can call this function");
+    modifier onlyOwner() {
+        require(msg.sender == owner, "NOT_OWNER");
         _;
     }
 
-    function owner() external view returns(address) {
-        return _owner;
-    }
-
-    function name() external view returns(string memory) {
-        return _name;
-    }
-
-    function symbol() external view returns(string memory) {
-        return _symbol;
+    function contractAddress() external view returns (address) {
+        return address(this);
     }
 
     /**
@@ -64,25 +59,26 @@ contract Company is VestingHelper {
         uint64 vestingDuration,
         uint64 startTime,
         uint64 vestingFrequency,
-        uint64 lockInPeriod) external restrictedToCompany callOnlyWhenActive {
+        uint64 lockInPeriod) external onlyOwner {
             // Instantiate Employee contract and store the addess in mapping
-            EmployeeVesting employee = new EmployeeVesting(employeeWallet, _token, totalTokensGranted,
+            EmployeeVesting employee = new EmployeeVesting(employeeWallet, token, totalTokensGranted,
                 vestingDuration, startTime, vestingFrequency, lockInPeriod);
-            employeeVesting[employeeWallet] = employee;
+            console.log("employee", employee.contractAddress());
+            employeeVesting[employeeWallet] = employee.contractAddress();
             employees.push(employeeWallet);
     }
 
     /**
      * Called to cancel/suspend the vesting
      */
-    function activateEmployeeVesting(address employee) external restrictedToCompany callOnlyWhenActive {
-        employeeVesting[employee].activate();
+    function activateEmployeeVesting(address employee) external onlyOwner {
+        EmployeeVesting(employeeVesting[employee]).activate();
     }
 
     /**
      * Get total number of employees
     */
-    function getTotalNumEmployees() external restrictedToCompany callOnlyWhenActive view returns(uint) {
+    function getTotalNumEmployees() external onlyOwner view returns(uint) {
         return employees.length;
     }
 
@@ -92,26 +88,26 @@ contract Company is VestingHelper {
      * Expensive operation as it doesn't support pagination. 
      * Use getEmployeesPaging() instead
     */
-    function getEmployeeList(uint8 status) external restrictedToCompany callOnlyWhenActive view returns(
-        address[] memory,
-        EmployeeVesting.VestingInfo[] memory
-        ) {
-        uint totalEmployees = employees.length;
-        // walk thru the employees and return the list
-        address[] memory employeeContractAddress = new address[](totalEmployees);
-        EmployeeVesting.VestingInfo[] memory vestings = new EmployeeVesting.VestingInfo[](totalEmployees);
-        uint retIndex = 0;
-        for (uint i=0; i < totalEmployees; i++) {
-            address employee = employees[i];
-            EmployeeVesting.VestingInfo memory vestingInfo = employeeVesting[employee].getEmployeeVestingInfo();
-            if (uint8(vestingInfo.status) == status) {
-                vestings[retIndex] = vestingInfo;
-                employeeContractAddress[retIndex] = employeeVesting[employee].contractAddress();
-                retIndex++;
-            }
-        }
-        return (employeeContractAddress, vestings);
-    }
+    // function getEmployeeList(uint8 status) external onlyOwner view returns(
+    //     address[] memory,
+    //     EmployeeVesting.VestingInfo[] memory
+    //     ) {
+    //     uint totalEmployees = employees.length;
+    //     // walk thru the employees and return the list
+    //     address[] memory employeeContractAddress = new address[](totalEmployees);
+    //     EmployeeVesting.VestingInfo[] memory vestings = new EmployeeVesting.VestingInfo[](totalEmployees);
+    //     uint retIndex = 0;
+    //     for (uint i=0; i < totalEmployees; i++) {
+    //         address employee = employees[i];
+    //         EmployeeVesting.VestingInfo memory vestingInfo = employeeVesting[employee].getEmployeeVestingInfo();
+    //         if (uint8(vestingInfo.status) == status) {
+    //             vestings[retIndex] = vestingInfo;
+    //             employeeContractAddress[retIndex] = employeeVesting[employee].contractAddress();
+    //             retIndex++;
+    //         }
+    //     }
+    //     return (employeeContractAddress, vestings);
+    // }
 
     /**
       * 
@@ -121,7 +117,7 @@ contract Company is VestingHelper {
       * Expensive operation as it doesn't support pagination. 
       * Use getEmployeesPaging() instead
       */
-    function getEmployeeList() external restrictedToCompany callOnlyWhenActive view returns(
+    function getEmployeeList() external onlyOwner view returns(
         address[] memory,
         EmployeeVesting.VestingInfo[] memory
         )  {
@@ -131,7 +127,7 @@ contract Company is VestingHelper {
         EmployeeVesting.VestingInfo[] memory vestings = new EmployeeVesting.VestingInfo[](totalEmployees);
         for (uint i=0; i < employees.length; i++) {
             address employee = employees[i];
-            EmployeeVesting employeeVestingContract = employeeVesting[employee];
+            EmployeeVesting employeeVestingContract = EmployeeVesting(employeeVesting[employee]);
             vestings[i] = employeeVestingContract.getEmployeeVestingInfo();
             employeeContractAddress[i] = employeeVestingContract.contractAddress();
         }
@@ -142,7 +138,7 @@ contract Company is VestingHelper {
       * 
       * Implements pagination for employees
       */
-    function getEmployeesPaging(uint offset, uint limit) external restrictedToCompany callOnlyWhenActive view returns(
+    function getEmployeesPaging(uint offset, uint limit) external onlyOwner view returns(
         address[] memory,
         EmployeeVesting.VestingInfo[] memory
         )  {
@@ -160,7 +156,7 @@ contract Company is VestingHelper {
         EmployeeVesting.VestingInfo[] memory vestings = new EmployeeVesting.VestingInfo[](limit);
         for (uint i=0; i < limit; i++) {
             address employee = employees[offset + i];
-            EmployeeVesting employeeVestingContract = employeeVesting[employee];
+            EmployeeVesting employeeVestingContract = EmployeeVesting(employeeVesting[employee]);
             EmployeeVesting.VestingInfo memory vestingInfo = employeeVestingContract.getEmployeeVestingInfo();
             vestings[i] = vestingInfo;
             employeeContractAddress[i] = employeeVestingContract.contractAddress();
@@ -172,14 +168,18 @@ contract Company is VestingHelper {
       * Get Employee contract
       * Returns employee vesting info
       */
-    function getEmployeeVesting(address employee) external restrictedToCompany callOnlyWhenActive view returns(
+    function getEmployeeVesting(address employee) external onlyOwner view returns(
         address,
         EmployeeVesting.VestingInfo memory
-        )  {
-        return (
-            employeeVesting[employee].contractAddress(),
-            employeeVesting[employee].getEmployeeVestingInfo()
-        );
+        ) {
+        console.log("getEmployeeVesting", employee, employeeVesting[employee]);
+        // console.log("getEmployeeVesting", employeeVesting[employee]);
+        EmployeeVesting vesting = EmployeeVesting(employeeVesting[employee]);
+        address employeeContract = employeeVesting[employee];
+        EmployeeVesting.VestingInfo memory vestingInfo = vesting.getEmployeeVestingInfo();
+        console.log('address', employeeContract);
+        console.log('vestingInfo', vestingInfo.totalTokensGranted);
+        return (employeeContract, vestingInfo);
     }
     
 }
