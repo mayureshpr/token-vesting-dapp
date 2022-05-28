@@ -165,12 +165,13 @@ contract EmployeeVesting {
     // }
 
     function getTokensVested() private view returns (uint256) {
-        // Calculate the tokens vested per vesting frequency
-        uint64 vestingCycles = vestingDuration / vestingFrequency;
-        uint256 tokensVestedPerCycle = totalTokensGranted / vestingCycles;
         // Calculate the tokens vested till now
         uint256 tokensVested;
+        // console.log("contractCreateTime", contractCreateTime, startTime, block.timestamp);
         if (contractCreateTime + startTime < block.timestamp) {
+            // Calculate the tokens vested per vesting frequency
+            uint64 vestingCycles = vestingDuration / vestingFrequency;
+            uint256 tokensVestedPerCycle = totalTokensGranted / vestingCycles;
             tokensVested =
                 ((block.timestamp - contractCreateTime - startTime) /
                     vestingFrequency) *
@@ -227,6 +228,11 @@ contract EmployeeVesting {
         require(
             (msg.sender == employeeWallet || msg.sender == owner),
             "RESTRICTED_CALL"
+        );
+
+        require(
+            block.timestamp >= contractCreateTime + startTime + lockInPeriod,
+            "LOCKINPERIOD_NOT_OVER"
         );
 
         uint256 tokensVested = getTokensVested();

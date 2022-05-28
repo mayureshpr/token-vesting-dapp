@@ -18,7 +18,7 @@ describe("Employee Contract", () => {
     let vestingDuration = 25;
     let startTime = 5;
     let vestingFrequency = 5;
-    let lockInPeriod = 5;
+    let lockInPeriod = 10;
 
     beforeEach("Deploy employee contract", async () => {
         const accounts = await ethers.getSigners();
@@ -68,23 +68,87 @@ describe("Employee Contract", () => {
     });
 
     it("Test the vesting schedule", async () => {
+
+        // Activate the contract
         // Transfer vesting tokens to the employee contract
         await erc20Contract.connect(companyAccount).transfer(employeeContract.address, totalTokensGranted);
         // activate employee contract
         await employeeContract.activate();
         expect(await employeeContract.status()).to.equal(VestingStatus.ACTIVE);
-        // Check waiting period before the vesting starts
-        setTimeout(async () => {
-            let vestingInfo = await employeeContract.getEmployeeVestingInfo();
-            expect(vestingInfo.tokenVested.toNumber()).to.equal(0);
-        }, startTime-2);
 
-        // Check lock in period
-        setTimeout(async () => {
-            let vestingInfo = await employeeContract.getEmployeeVestingInfo();
-            expect(vestingInfo.tokenVested.toNumber()).to.gt(0);
-        }, lockInPeriod-2);
+        // Check waiting period before the vesting starts
+        // await new Promise(r => setTimeout(r, startTime-2));
+        await ethers.provider.send("evm_increaseTime", [startTime - 2]);
+        await ethers.provider.send("evm_mine");
+        let vestingInfo = await employeeContract.getEmployeeVestingInfo();
+        expect(vestingInfo.tokensVested.toNumber()).to.equal(0);
+
+        // Check lock in period and transfer
+        // await new Promise(r => setTimeout(r, lockInPeriod-2));
+        await ethers.provider.send("evm_increaseTime", [lockInPeriod-2]);
+        await ethers.provider.send("evm_mine");
+        vestingInfo = await employeeContract.getEmployeeVestingInfo();
+        expect(vestingInfo.tokensVested.toNumber()).to.gt(0);
+        await expect(
+            employeeContract.transferTokensToEmployeeWallet()
+        ).to.be.revertedWith("LOCKINPERIOD_NOT_OVER");
+
+        // Test transfer after lockin period
+        // transfer tokens to the employee account
+        await ethers.provider.send("evm_increaseTime", [5]);
+        await ethers.provider.send("evm_mine");
+        vestingInfo = await employeeContract.getEmployeeVestingInfo();
+        await employeeContract.transferTokensToEmployeeWallet();
+        let balance = await erc20Contract.balanceOf(employeeAcoount.address);
+        expect(balance.toNumber()).to.gte(vestingInfo.tokensVested.toNumber());
+
+        // Test vesting done
+        await ethers.provider.send("evm_increaseTime", [vestingDuration - lockInPeriod]);
+        await ethers.provider.send("evm_mine");
+        vestingInfo = await employeeContract.getEmployeeVestingInfo();
+        await employeeContract.transferTokensToEmployeeWallet();
+        balance = await erc20Contract.balanceOf(employeeAcoount.address);
+        expect(balance.toNumber()).to.equal(totalTokensGranted);
     });
+    // describe("Test the vesting schedule", () => {
+
+    //     it("activate contract", async () => {
+    //         // Transfer vesting tokens to the employee contract
+    //         await erc20Contract.connect(companyAccount).transfer(employeeContract.address, totalTokensGranted);
+    //         // activate employee contract
+    //         await employeeContract.activate();
+    //         expect(await employeeContract.status()).to.equal(VestingStatus.ACTIVE);
+    //     });
+
+    //     it('wait to test start time', async () => {        
+    //         await ethers.provider.send("evm_increaseTime", [3]);
+    //     });
+
+    //     it("test start time period", async () => {
+    //         // Check waiting period before the vesting starts
+    //         // await new Promise(r => setTimeout(r, startTime-2));
+    //         // await ethers.provider.send("evm_increaseTime", [3]);
+    //         let vestingInfo = await employeeContract.getEmployeeVestingInfo();
+    //         expect(vestingInfo.tokensVested.toNumber()).to.equal(0);
+    //     });
+
+    //     it("Test lock in period", async () => {
+    //         // await new Promise(r => setTimeout(r, lockInPeriod-2));
+    //         await ethers.provider.send("evm_increaseTime", [10]);
+    //         let vestingInfo = await employeeContract.getEmployeeVestingInfo();
+    //         // console.log(vestingInfo);
+    //         expect(vestingInfo.tokensVested.toNumber()).to.gt(0);
+    //     });
+
+    //     it("Test transfer tokens", async () => {
+    //         // transfer tokens to the employee account
+    //         await employeeContract.transferTokensToEmployeeWallet();
+    //         let balance = await erc20Contract.balanceOf(employeeAcoount.address);
+    //         console.log(balance.toNumber());
+    //         let vestingInfo = await employeeContract.getEmployeeVestingInfo();
+    //         expect(balance.toNumber()).to.gte(vestingInfo.tokensVested.toNumber());
+    //     });
+    // });
 
     // it("set vesting status", async () => {
     //     await employeeContract.setVestingStatus(VestingStatus.CANCELLED);
