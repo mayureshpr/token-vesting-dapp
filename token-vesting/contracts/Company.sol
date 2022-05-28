@@ -64,11 +64,10 @@ contract Company is VestingHelper {
         uint64 vestingDuration,
         uint64 startTime,
         uint64 vestingFrequency,
-        uint64 lockInPeriod,
-        EmployeeVesting.VestingStatus status) external restrictedToCompany callOnlyWhenActive {
+        uint64 lockInPeriod) external restrictedToCompany callOnlyWhenActive {
             // Instantiate Employee contract and store the addess in mapping
             EmployeeVesting employee = new EmployeeVesting(employeeWallet, _token, totalTokensGranted,
-                vestingDuration, startTime, vestingFrequency, lockInPeriod, status);
+                vestingDuration, startTime, vestingFrequency, lockInPeriod);
             employeeVesting[employeeWallet] = employee;
             employees.push(employeeWallet);
     }
@@ -76,11 +75,8 @@ contract Company is VestingHelper {
     /**
      * Called to cancel/suspend the vesting
      */
-    function setEmployeeVestingState(address employee, 
-        uint8 status) external restrictedToCompany callOnlyWhenActive {
-        employeeVesting[employee].setVestingStatus(
-            EmployeeVesting.VestingStatus(status)
-        );
+    function activateEmployeeVesting(address employee) external restrictedToCompany callOnlyWhenActive {
+        employeeVesting[employee].activate();
     }
 
     /**

@@ -25,7 +25,10 @@
  }
  
  module.exports = {
+   networks: {
+    hardhat: {
+    },
+   },
    solidity: "0.8.1",
-   networks: networks
  };
  

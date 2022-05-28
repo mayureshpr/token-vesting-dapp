@@ -3,11 +3,11 @@
 pragma solidity ^0.8.0;
 
 contract VestingHelper {
-    enum ContractState {NOT_CREATED, ACTIVE, DELETED, SUSPENDED}
+    enum ContractState {NOT_ACTIVE, ACTIVE, DELETED, SUSPENDED}
     ContractState private state;
 
     constructor() {
-        state = ContractState.ACTIVE;
+        state = ContractState.NOT_ACTIVE;
     }
 
     function contractAddress() external view returns(address) {
